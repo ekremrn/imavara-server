@@ -1,0 +1,305 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Imavara Glimmer analysis v1",
+  "type": "object",
+  "properties": {
+    "caption": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "main_subject": {
+      "type": "string"
+    },
+    "objects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "visible_attributes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "position": {
+            "type": "string",
+            "enum": [
+              "left",
+              "center",
+              "right",
+              "top",
+              "bottom",
+              "top_left",
+              "top_right",
+              "bottom_left",
+              "bottom_right",
+              "distributed",
+              "unknown"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "visible_attributes",
+          "position"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "actions_and_relations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "people_presence": {
+      "type": "string",
+      "enum": [
+        "present",
+        "absent",
+        "unknown"
+      ]
+    },
+    "setting": {
+      "type": "object",
+      "properties": {
+        "scene": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "indoor",
+            "outdoor",
+            "mixed",
+            "unknown"
+          ]
+        },
+        "background": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "scene",
+        "environment",
+        "background"
+      ],
+      "additionalProperties": false
+    },
+    "composition": {
+      "type": "object",
+      "properties": {
+        "subject_position": {
+          "type": "string",
+          "enum": [
+            "left",
+            "center",
+            "right",
+            "top",
+            "bottom",
+            "top_left",
+            "top_right",
+            "bottom_left",
+            "bottom_right",
+            "distributed",
+            "unknown"
+          ]
+        },
+        "copy_space": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "left",
+              "right",
+              "top",
+              "bottom",
+              "center"
+            ]
+          }
+        },
+        "copy_space_status": {
+          "type": "string",
+          "enum": [
+            "present",
+            "absent",
+            "unknown"
+          ]
+        },
+        "framing": {
+          "type": "string",
+          "enum": [
+            "detail",
+            "close_up",
+            "medium",
+            "wide",
+            "unknown"
+          ]
+        },
+        "viewpoint": {
+          "type": "string",
+          "enum": [
+            "eye_level",
+            "overhead",
+            "high_angle",
+            "low_angle",
+            "ground_level",
+            "unknown"
+          ]
+        }
+      },
+      "required": [
+        "subject_position",
+        "copy_space",
+        "copy_space_status",
+        "framing",
+        "viewpoint"
+      ],
+      "additionalProperties": false
+    },
+    "appearance": {
+      "type": "object",
+      "properties": {
+        "style": {
+          "type": "string",
+          "enum": [
+            "photographic",
+            "illustration",
+            "render",
+            "collage",
+            "mixed",
+            "unknown"
+          ]
+        },
+        "lighting": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "mood": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "color_family": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "white",
+              "gray",
+              "black",
+              "brown",
+              "beige",
+              "red",
+              "orange",
+              "yellow",
+              "green",
+              "cyan",
+              "blue",
+              "purple",
+              "pink"
+            ]
+          }
+        }
+      },
+      "required": [
+        "style",
+        "lighting",
+        "mood",
+        "color_family"
+      ],
+      "additionalProperties": false
+    },
+    "text": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "absent",
+            "readable",
+            "partially_readable",
+            "unreadable",
+            "unknown"
+          ]
+        },
+        "visible_fragments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "status",
+        "visible_fragments"
+      ],
+      "additionalProperties": false
+    },
+    "theme": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "business",
+          "technology",
+          "food",
+          "nature",
+          "travel",
+          "lifestyle",
+          "health",
+          "sports",
+          "architecture",
+          "education",
+          "industry",
+          "culture",
+          "background"
+        ]
+      }
+    },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "suggested_uses": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "banner",
+          "editorial_cover",
+          "social_post",
+          "presentation",
+          "product_background",
+          "thumbnail"
+        ]
+      }
+    }
+  },
+  "required": [
+    "caption",
+    "description",
+    "main_subject",
+    "objects",
+    "actions_and_relations",
+    "people_presence",
+    "setting",
+    "composition",
+    "appearance",
+    "text",
+    "theme",
+    "keywords",
+    "suggested_uses"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,121 @@
+name: imavara
+x-storage: &storage
+  SENTRY_DSN: ${SENTRY_DSN:-}
+  S3_ENDPOINT: garage:3900
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:-GK000000000000000000000001}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:-0000000000000000000000000000000000000000000000000000000000000001}
+services:
+  garage:
+    build: ./deploy/garage
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:-0000000000000000000000000000000000000000000000000000000000000002}
+    volumes:
+      - ./deploy/garage/garage.toml:/etc/garage.toml:ro
+      - garage:/var/lib/garage
+  garage-init:
+    build: ./deploy/garage
+    depends_on: [garage]
+    network_mode: service:garage
+    command: ["sh", "/init.sh"]
+    restart: on-failure
+    environment:
+      <<: *storage
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:-0000000000000000000000000000000000000000000000000000000000000002}
+    volumes:
+      - ./deploy/garage/garage.toml:/etc/garage.toml:ro
+      - garage:/var/lib/garage
+  mcp:
+    build:
+      context: .
+      args: {SERVICE: mcp}
+  agent:
+    build: ./agent
+    environment:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+    depends_on: [mcp]
+  qdrant:
+    image: qdrant/qdrant:v1.16.1
+    command: ["./qdrant", "--config-path", "/etc/qdrant.yml"]
+    volumes:
+      - ./deploy/qdrant.yml:/etc/qdrant.yml:ro
+      - qdrant_data:/qdrant/storage
+  catalog-init:
+    build:
+      context: .
+      args: {SERVICE: catalog-init}
+    depends_on: [qdrant]
+  rabbitmq:
+    image: rabbitmq:4-alpine
+    hostname: rabbitmq
+    ports: ["127.0.0.1:15672:15672"]
+    environment:
+      RABBITMQ_DEFAULT_USER: imavara
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD:-imavara-local}
+    volumes:
+      - ./deploy/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+      - rabbitmq:/var/lib/rabbitmq
+  index-worker:
+    build:
+      context: .
+      args: {SERVICE: index-worker}
+    restart: on-failure
+    environment:
+      <<: *storage
+      DATABASE_URL: postgres://imavara:${POSTGRES_PASSWORD:-imavara-local}@postgres/imavara?sslmode=disable
+      AMQP_URL: amqp://imavara:${RABBIT_PASSWORD:-imavara-local}@rabbitmq:5672/
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+    depends_on: [api, rabbitmq, catalog-init, garage-init]
+  image-extract-worker:
+    build:
+      context: .
+      args: {SERVICE: image-extract-worker}
+    restart: on-failure
+    environment:
+      <<: *storage
+      DATABASE_URL: postgres://imavara:${POSTGRES_PASSWORD:-imavara-local}@postgres/imavara?sslmode=disable
+      AMQP_URL: amqp://imavara:${RABBIT_PASSWORD:-imavara-local}@rabbitmq:5672/
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+    depends_on: [api, rabbitmq, catalog-init, garage-init]
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus:/prometheus
+  grafana:
+    image: grafana/grafana:12.1.1
+    ports: ["127.0.0.1:${GRAFANA_PORT:-13000}:3000"]
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/imavara-dashboards:ro
+      - grafana:/var/lib/grafana
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: imavara
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-imavara-local}
+      POSTGRES_DB: imavara
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "imavara"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  api:
+    build: .
+    environment:
+      <<: *storage
+      DATABASE_URL: postgres://imavara:${POSTGRES_PASSWORD:-imavara-local}@postgres/imavara?sslmode=disable
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${API_PORT:-18080}:8080"
+volumes:
+  postgres:
+  qdrant_data:
+  rabbitmq:
+  garage:
+  prometheus:
+  grafana:

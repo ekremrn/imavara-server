@@ -1,0 +1,18 @@
+global:
+  scrape_interval: 5s
+scrape_configs:
+  - job_name: api
+    static_configs:
+      - targets: ["api:9091"]
+  - job_name: mcp
+    static_configs:
+      - targets: ["mcp:9091"]
+  - job_name: agent
+    static_configs:
+      - targets: ["agent:9091"]
+  - job_name: image-extract-worker
+    static_configs:
+      - targets: ["image-extract-worker:9091"]
+  - job_name: index-worker
+    static_configs:
+      - targets: ["index-worker:9091"]

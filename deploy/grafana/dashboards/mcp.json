@@ -1,0 +1,53 @@
+{
+  "title": "Imavara \u00b7 mcp",
+  "uid": "imavara-mcp",
+  "schemaVersion": 39,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "service_ready",
+      "id": 1,
+      "gridPos": {
+        "w": 12,
+        "h": 7,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "imavara"
+      },
+      "targets": [
+        {
+          "expr": "imavara_service_ready{job=\"mcp\"}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "tool_calls_total",
+      "id": 2,
+      "gridPos": {
+        "w": 12,
+        "h": 7,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "imavara"
+      },
+      "targets": [
+        {
+          "expr": "imavara_tool_calls_total{job=\"mcp\"}",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  }
+}

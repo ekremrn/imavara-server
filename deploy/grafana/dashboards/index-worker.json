@@ -1,0 +1,137 @@
+{
+  "title": "Imavara \u00b7 index-worker",
+  "uid": "imavara-index-worker",
+  "schemaVersion": 39,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "service_ready",
+      "id": 1,
+      "gridPos": {
+        "w": 12,
+        "h": 7,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "imavara"
+      },
+      "targets": [
+        {
+          "expr": "imavara_service_ready{job=\"index-worker\"}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "jobs_received_total",
+      "id": 2,
+      "gridPos": {
+        "w": 12,
+        "h": 7,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "imavara"
+      },
+      "targets": [
+        {
+          "expr": "imavara_jobs_received_total{job=\"index-worker\"}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "jobs_failed_total",
+      "id": 3,
+      "gridPos": {
+        "w": 12,
+        "h": 7,
+        "x": 0,
+        "y": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "imavara"
+      },
+      "targets": [
+        {
+          "expr": "imavara_jobs_failed_total{job=\"index-worker\"}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "publication_seconds_sum",
+      "id": 4,
+      "gridPos": {
+        "w": 12,
+        "h": 7,
+        "x": 12,
+        "y": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "imavara"
+      },
+      "targets": [
+        {
+          "expr": "imavara_publication_seconds_sum{job=\"index-worker\"}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "publication_seconds_count",
+      "id": 5,
+      "gridPos": {
+        "w": 12,
+        "h": 7,
+        "x": 0,
+        "y": 14
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "imavara"
+      },
+      "targets": [
+        {
+          "expr": "imavara_publication_seconds_count{job=\"index-worker\"}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "provider_cost_usd_total",
+      "id": 6,
+      "gridPos": {
+        "w": 12,
+        "h": 7,
+        "x": 12,
+        "y": 14
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "imavara"
+      },
+      "targets": [
+        {
+          "expr": "imavara_provider_cost_usd_total{job=\"index-worker\"}",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  }
+}

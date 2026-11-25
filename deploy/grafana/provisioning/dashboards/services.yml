@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: imavara
+    folder: Imavara
+    type: file
+    options:
+      path: /var/lib/imavara-dashboards
