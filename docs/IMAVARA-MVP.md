@@ -178,7 +178,7 @@ Send the image and versioned analysis instruction in one call. Keep the generati
 
 ## 13. Architecture diagrams and open decisions
 
-[Local API](architecture/api.svg) · [Internal MCP](architecture/mcp.svg) · [Extraction](architecture/extract.svg) · [Indexing](architecture/index.svg) · [Web agent](architecture/agent.svg) · [System overview](architecture/overview.svg)
+[Local API](architecture/api.png) · [Internal MCP](architecture/mcp.png) · [Extraction](architecture/extract.png) · [Indexing](architecture/index.png) · [Web agent](architecture/agent.png) · [System overview](architecture/overview.png)
 
 Validate provider dimensions, binary quantization impact, and both similarity thresholds on the first catalog. The original 0.80 score suggestion is provisional. Tune Luna rules and review boundaries with examples and evaluate near duplicates separately. Private-library semantic indexing, chat retention, seed collection sourcing, end-to-end inline provider support, and the measured provider budget remain decisions to validate.
 

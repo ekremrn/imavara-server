@@ -4,7 +4,7 @@ Imavara searches a shared stock photo catalog from a visual brief. Users can acq
 
 ## Architecture
 
-![Browser, API, agent, internal MCP and catalog services](docs/architecture/overview.svg)
+![Browser, API, agent, internal MCP and catalog services](docs/architecture/overview.png)
 
 **Search.** Discover calls the API directly. In chat, the LangChain agent uses internal MCP to call the same operations. The API searches Qdrant by text or reference image. Optional `top_k` accepts 1–10 and defaults to 5. Results carry similarity scores.
 
@@ -15,35 +15,35 @@ Imavara searches a shared stock photo catalog from a visual brief. Users can acq
 <details>
 <summary>Go API · Sessions, search, generation, and delivery</summary>
 
-![Go API · Sessions, search, generation, and delivery](docs/architecture/api.svg)
+![Go API · Sessions, search, generation, and delivery](docs/architecture/api.png)
 
 </details>
 
 <details>
 <summary>Web agent · From conversation to tool call</summary>
 
-![Web agent · From conversation to tool call](docs/architecture/agent.svg)
+![Web agent · From conversation to tool call](docs/architecture/agent.png)
 
 </details>
 
 <details>
 <summary>Internal MCP · From tool call to API operation</summary>
 
-![Internal MCP · From tool call to API operation](docs/architecture/mcp.svg)
+![Internal MCP · From tool call to API operation](docs/architecture/mcp.png)
 
 </details>
 
 <details>
 <summary>Extraction worker · From pixels to structured descriptions</summary>
 
-![Extraction worker · From pixels to structured descriptions](docs/architecture/extract.svg)
+![Extraction worker · From pixels to structured descriptions](docs/architecture/extract.png)
 
 </details>
 
 <details>
 <summary>Index worker · From analysis to a searchable record</summary>
 
-![Index worker · From analysis to a searchable record](docs/architecture/index.svg)
+![Index worker · From analysis to a searchable record](docs/architecture/index.png)
 
 </details>
 
