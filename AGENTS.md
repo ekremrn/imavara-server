@@ -1,25 +1,25 @@
-# Imavara server çalışma rehberi
+# Server development guide
 
-Bu monorepo yerel MVP’nin API, iç MCP, LangChain agent ve iki worker sürecini taşır. İşe ilgili servisin normal girişinden başla, çağırdığı ortak kodu ve çıktıyı tüketen servisi izle. Değişikliği bu akış üzerinden doğrula.
+This monorepo runs the local API, internal MCP server, LangChain agent, and two workers. Start from the service's normal entry point and trace its shared dependencies and downstream consumers. Verify the change along that path.
 
-## Yerleşim ve sorumluluk
+## Layout and responsibilities
 
-- Go giriş noktalarını `cmd/{api,mcp,image-extract-worker,index-worker}` altında tut. İş kuralları ilgili `internal` alanında, Garage, OpenRouter, kuyruk ve ortak loglama bağlantıları `internal/platform` altında yaşar.
-- TypeScript agent ve prompt’lar `agent/`, sürümlü mesaj şemaları `contracts/`, veri geçişleri `migrations/`, yerel işletim dosyaları `deploy/` ve kökteki Compose dosyasında yer alır. Mevcut paketi genişletmeden önce çağıranlarını incele.
-- API tarayıcı bağlamını, erişimi ve krediyi yönetir. Agent iç MCP üzerinden API işlemlerini çağırır. Analiz worker’ı doğrulanmış JSON üretir. İndeks worker’ı iki vektörü aynı point’e yazar ve yayımı tamamlar. Kuyruk mesajlarında nesne anahtarı ve sürümü taşı.
+- Keep Go service entry points under `cmd/{api,mcp,image-extract-worker,index-worker}`. Domain logic belongs in the corresponding `internal` package. Shared storage, model access, and observability integrations live under `internal/platform`.
+- TypeScript agent code and prompts live in `agent/`, versioned contracts in `contracts/`, database changes in `migrations/`, and local deployment files in `deploy/` and the root Compose file. Inspect existing callers before extending a package.
+- The API owns browser context, rights, and credit accounting. The agent invokes API operations through internal MCP. Extraction produces validated analysis JSON. Indexing writes both vectors on the same point and completes publication. Carry object keys and versions in queue messages.
 
-## Uyumluluk ve doğrulama
+## Compatibility and verification
 
-HTTP alan adları, durum kodları, WebSocket olayları, MCP araçları ve RabbitMQ mesajları bağımsız tüketicilerin sözleşmesidir. Ek alanı eski girdilerle çalışacak şekilde tanımla. Zorunlu değişiklikte önce her iki sürümü okuyabilen tüketiciyi çıkar, ardından üreticiyi geçir. Eski kuyruk mesajıyla ve önceki istemci isteğiyle sonucu dene. Migration’ı mevcut satırlarla doğrula. Embedding boyutu veya modeli değişirse yeni koleksiyonu doldurup doğruladıktan sonra arama alias’ını geçir.
+HTTP fields and status codes, WebSocket events, MCP tools, and RabbitMQ messages are contracts with independent consumers. Make additive fields compatible with older inputs. For a breaking change, deploy readers that understand both versions before switching writers. Test an old queued message and an earlier client request. Verify migrations against existing rows. For an embedding model or dimension change, populate and validate a new collection before switching the search alias.
 
-Kredi, üretim, yayım veya ACK sırası değiştiğinde isteği tekrar gönder ve yazımdan sonraki kesintiyi dene. Dosya, bakiye, point ve ödülün tek işlemle tutarlı kaldığını doğrula.
+When changing credit accounting, generation, publication, or acknowledgement order, replay a request and simulate interruption after a write. Check the file, balance, point, and reward for a single consistent outcome.
 
-## Gözlemlenebilirlik
+## Observability
 
-Değişen işlemde istek veya iş kimliğinin servisler arasında taşındığını kontrol et. Süre, hata, sağlayıcı maliyeti veya kuyruk davranışı değiştiğinde ilgili Prometheus metriğini ve servisin Grafana panelini birlikte dene. Metrik adını, birimini veya etiketini değiştirmeden önce mevcut sorguları incele. İstek ve asset kimliklerini loglarda tut, metrik etiketi olarak kullanma. Sentry etkinse yeni hata yoluna servis ve sürüm bağlamı ekle. Yerel Compose boş DSN ile çalışmalı. Ham ses, özel görsel, oturum çerezi ve sağlayıcı anahtarını telemetriye yazma.
+Preserve request and operation IDs across services. If latency, errors, provider costs, or queue behavior change, exercise the Prometheus metric and its Grafana panel together. Review existing queries before changing metric names, units, or labels. Keep request and asset IDs in logs rather than metric labels. When Sentry is enabled, include service and release context for new errors. Local Compose must work with an empty DSN. Exclude raw audio, private images, cookies, and provider credentials from telemetry.
 
-## Değişiklik ve sürüm kaydı
+## Delivery and release notes
 
-Teslimden önce repo kökünde `go test ./...` ve `docker compose config --quiet` çalıştır. Değişen servisi Compose’da yeniden oluşturup gerçek tüketicisinden çağır. Ölçüm değiştiyse `deploy/prometheus.yml` içindeki hedefi ve `deploy/grafana/dashboards/` altındaki ilgili panel sorgusunu kontrol et. Örneğin bir indeks işi yeniden teslim edildiğinde deneme sayısı artabilir, ancak aynı görsel için ikinci yayım veya ikinci katkı ödülü oluşmamalı.
+From the repository root run `go test ./...` and `docker compose config --quiet`. Rebuild the affected service and exercise it from its real consumer. For telemetry changes, check the target in `deploy/prometheus.yml` and the associated query in `deploy/grafana/dashboards/`. Redelivering an indexing job may increase the attempt count. Verify a single publication and contribution reward.
 
-Kullanıcı davranışı, entegrasyon sözleşmesi, veri geçişi veya işletim gereksinimi değiştiğinde aynı commit ya da değişiklik setinde [CHANGELOG.md](CHANGELOG.md) içindeki “Yayımlanmamış” bölümüne kısa bir kayıt ekle. Etkilenen kullanıcıyı veya servisi, görünen farkı ve gerekiyorsa geçiş adımını yaz. İki repoyu etkileyen işte her repo kendi etkisini kaydeder. Önemli bir sürüm yayımlandığında ilgili kayıtları gerçek sürüm ve tarih altında topla. Henüz planlanan özelliği teslim edilmiş gibi kaydetme.
+Record user-visible, integration, migration, and operational changes under **Unreleased** in [CHANGELOG.md](CHANGELOG.md) in the same change set. Describe who is affected, the observable change, and migration steps. Cross-repository changes require an entry for each affected repository. Group delivered entries under the actual release version and date.

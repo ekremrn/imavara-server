@@ -1,206 +1,185 @@
-# Imavara — Yerel MVP ürün ve mimari planı
+# Imavara local MVP product and architecture plan
 
-Bu belge ürün kapsamını ve hedef mimariyi tanımlar. Mevcut proje klasöründe tasarım şemaları ve agent sistem prompt’u bulunur. Aşağıdaki servisler, endpoint adları ve dizinler uygulama tasarımını tarif eder.
+This document defines the product scope and target architecture. The service boundaries, routes, directories, and validation work below describe how the design fits together. The delivery plan tracks evidence of completion.
 
-## 1. Ürün ve başarı ölçüsü
+## 1. Product and success criteria
 
-Imavara’nın ilkesi **önce ara, gerektiğinde üret**. Kullanıcı bir görsele neden ihtiyaç duyduğunu anlatır. Sistem mevcut AI görselleri arasından kullanıma uygun adayları getirir. Kullanıcı orijinali alabilir, yakın bir adaydan varyasyon isteyebilir veya yeni bir görsel üretebilir. Açıkça paylaşılmış ve kabul edilmiş görseller gelecekteki aramalarda başka ihtiyaçları karşılar.
+Start by searching. Generate an image when the catalog cannot meet the brief. A user describes a need, reviews existing AI images, and can acquire an original, vary a close match, or generate a new image. Once accepted and published, an image can serve other users.
 
-İlk sürümün ana sorusu şudur: Kullanıcı gerçek bir işte ihtiyacını mevcut bir görselle karşılayabiliyor mu? Bunu aramadan edinime dönüşüm, boş sonuç oranı, üretime geçiş ve görsel edinme maliyetiyle izleyeceğiz. İlk katalog için paylaşım ve kullanım koşulları belli, oran ve kompozisyon çeşitliliği olan bir başlangıç koleksiyonu gerekir.
+Measure how often a real brief ends with an existing image, the fraction of searches with no results, transitions to generation, and cost per acquired image. Seed the catalog with images that have known usage rights, varied compositions, and different aspect ratios.
 
-**Örnek yolculuk.** Kullanıcı “Kafemin web sitesi için sıcak ışıklı bir kapak istiyorum” yazar. Agent gerekliyse başlığın nereye konacağını sorar. Kullanıcı “Sola” dediğinde gerçek katalog sonuçları gelir. Kullanıcı ikinci fotoğrafı 1 krediye alabilir veya “İkincideki fincanı kaldır, kadrajı koru” diyerek 3 krediye varyasyon isteyebilir. Aynı konuşmayı ertesi gün kart sırasıyla birlikte yeniden açabilir.
+For example, a café owner asks for a warmly lit website cover. The agent asks where the headline will go. The owner answers “on the left,” sees real cards, and can acquire the second result for 1 credit or ask for a 3-credit variation that removes the cup while preserving the framing. Reopening the chat the next day preserves card order.
 
-## 2. Yerel çalışma sınırı
+## 2. Local deployment boundary
 
-- React arayüzü yerelde çalışır. API, iç MCP, web agent, iki worker ve veri servisleri Docker Compose ile çalıştırılır. Model çağrıları internet üzerinden OpenRouter’a gider. OpenRouter anahtarı sunucu tarafında kalır.
-- Kullanıcı giriş yapmadan tarayıcısıyla başlar. Kalıcı, rastgele bir `HttpOnly` çerez PostgreSQL’deki anonim tarayıcı kaydına bağlanır. HTTP ve WebSocket aynı tarayıcı bağlamını kullanır. Sohbet, bakiye, kitaplık ve indirme işlemlerinde API bu kaydı esas alır. Agent’a hesap veya tarayıcı seçtirilmez.
-- İlk MCP istemcisi Imavara’nın kendi LangChain agent’ıdır. MCP’ye Docker’ın özel ağından erişilir. Başka bir özel ağ istemcisine erişim açılması daha sonraki bir kurulum tercihidir.
-- Keycloak, OAuth, roller, SMTP/Mailpit, Kubernetes, Netlify, production dağıtımı ve kredi satışı yerel MVP kapsamı dışındadır. Üretim ortamı gündeme geldiğinde kimlik, dağıtım ve Sentry tekrar ele alınır. SVG/komponent kütüphanesi, video ve diğer medya türleri ileri fazlardır.
+React runs locally. Docker Compose runs the API, internal MCP server, web agent, two workers, and data services. Model traffic goes to OpenRouter over the internet. Credentials stay on the server.
 
-## 3. Arayüz ve konuşma
+A persistent random HttpOnly cookie identifies an anonymous browser in PostgreSQL. HTTP and WebSocket use that same context for chat, balance, library, and downloads. The agent cannot choose a browser identity. Imavara's LangChain agent is the first MCP client, on the private Docker network. Access for another private-network client is a future deployment choice.
 
-**Açılış.** İlk ekran arama motoru sadeliğindedir. Ortada küçük “imavara.” logosu ve tıklanıp yazılabilen tek bir giriş alanı bulunur. Alan referans görsel eklemeyi destekler. İlk mesaj gönderilince kullanıcı metni konuşmanın ilk mesajına dönüşür, yazma alanı kısa bir geçişle aşağı yerleşir ve sohbet açılır. Klavye odağı korunur. Azaltılmış hareket tercihinde geçiş doğrudan yapılabilir.
+Keycloak, OAuth, roles, SMTP/Mailpit, Kubernetes, Netlify deployment, production operations, and credit sales are outside the local MVP. Revisit identity, deployments, and Sentry for production. SVG components, video, and other media types are later phases.
 
-**Sesle anlat.** Açılış alanında ve sohbetin mesaj alanında mikrofon düğmesi bulunur. Kullanıcı “Sesle anlat”a dokununca kayıt başlar (ilk kullanımda mikrofon iznini verir). Kayıt süresiyle birlikte “Gönder” ve “İptal” gösterilir. “Gönder” kaydı bitirir ve yazıya çevirmeyi başlatır. Uzun kayıtlarda “Ses yazıya çevriliyor…” durumu görünür. Transkript hazır olunca varsa yazılı taslakla birleştirilir ve seçili referans görselle birlikte otomatik olarak konuşmada tek kullanıcı mesajı olarak görünür. Agent kataloğu aramaya başladığında arayüz “Katalogda aranıyor…” durumunu gerçek araç olayından gösterir. İptal, reddedilen mikrofon izni, boş transkript ve transkripsiyon hatasında mesaj oluşturulmaz, önceki taslak korunur.
+## 3. Interface and conversation
 
-**Sohbet.** Agent kullanım amacı, oran, stil, kadraj veya boş alan gibi kararı etkileyen bir eksik varsa kısa bir soru sorar. İstek yeterince açıksa kataloğu arar. Metinle birlikte gerçek görsel kartları gösterilir. Sonuçların sırası konuşmada saklanır. Kullanıcı yeni sohbet açabilir, eski sohbet ve görsellerine dönebilir. Sohbeti silme ile kitaplıktaki görseli kaldırma ayrı işlemlerdir. [Agent sistem prompt’u](../agent/prompts/system.tr.txt)
+**Landing.** A small “imavara.” wordmark and one input field let the user type or attach a reference. On the first message, the field moves down and the conversation opens. Preserve keyboard focus and respect reduced motion.
 
-**Keşfet.** İkinci görünüm agent turu gerektirmeden doğrudan arama, referansla benzerlerini bulma ve filtreleme sunar. İlk görünümünde son eklenenler ve en çok edinilenler bulunur. Kart orijinal kadrajı, önizlemeyi, oranı ve boyutu gösterir. “Orijinali al · 1 kredi”, “Benzerlerini bul” ve “Varyasyon üret · 3 kredi” eylemleri ilgili görsele bağlanır. Katkı ekranı toplu dosya seçimini ve her dosyanın sonucunu gösterir.
+**Voice.** Offer recording on the landing screen and in chat. Request permission on first use. Show elapsed time, Send, and Cancel. Send stops recording, displays the transcription state, combines the transcript with any typed draft, and submits one message with the selected reference. Show search progress when the actual tool starts. Preserve the draft on cancellation, denied permission, empty transcription, or failure.
 
-**Görsel dil.** Sıcak arka plan `#F7F6F2`, beyaz yüzey `#FFFFFF`, ana yazı `#202522`, ikincil yazı `#58635D`, petrol yeşili vurgu `#176454`, seçili yüzey `#E3EFE9`. Logo küçük harfli ve noktalı. Arayüz için DM Sans, açılış sorusu kullanılırsa Instrument Serif önerildi. Yerleşim ve animasyon ayrıntıları arayüz görüşmesinde kesinleşecek. Açılış ekranının alt kısmında küçük, ikincil metin olarak “Sohbet, görsel üretimi ve analizde Meta Muse modellerini kullanıyoruz.” ifadesi yer alır.
+**Chat.** Ask one short question when purpose, ratio, style, framing, or copy space materially affects the result. Search when the brief is clear. Keep real cards in order with the conversation. Users can start a new chat or reopen an old one. Deleting a chat and removing a library image are separate operations. [Agent system prompt](../agent/prompts/system.tr.txt)
 
-## 4. Tarayıcı kredisi ve erişim
+**Discover.** Direct text and reference searches, filters, recently published images, and most-acquired images are available without an agent turn. Cards retain the original framing and show preview, dimensions, aspect ratio, and actions to acquire, find similar images, or generate a variation. Batch contributions report an outcome per file.
 
-| İşlem | Demo kredisi | Kayıt davranışı |
-|---|---:|---|
-| İlk tarayıcı oturumu | +100 | Tek seferlik açılış hareketi |
-| Sohbet, sesle yazma, tarif geliştirme, arama ve önizleme | 0 | Boş sonuç da ücretsiz |
-| Mevcut orijinali ilk kez alma | −1 | Tarayıcı ve görsel çifti için tek edinim |
-| Edinilmiş dosyayı tekrar indirme | 0 | Aynı kalıcı adres ve hak kullanılır |
-| Yeni üretim veya varyasyon | −3 | Teslim edilebilen çıktı için tek ücret, kaynak görseli ayrıca edinme bedeli yok |
-| İlk kez yayımlanan benzersiz dış katkı | +1 | İçerik başına tek ödül |
+**Visual design.** Use warm background `#F7F6F2`, white surfaces, primary text `#202522`, secondary text `#58635D`, teal accent `#176454`, and selected surface `#E3EFE9`. The lowercase wordmark ends with a period. The design proposes DM Sans and optionally Instrument Serif for the opening question. A secondary footer credits Meta Muse for chat, image generation, and analysis.
 
-Kredi bir Imavara ürün birimidir. Sağlayıcı maliyeti ayrı izlenir. Sekmeler ve yeni sohbet aynı bakiyeyi paylaşır. Çerez silinirse, gizli pencere veya başka profil kullanılırsa yeni demo oturumu oluşur. Önceki sohbetler eski oturuma bağlı kalır. Bu davranış güvenilen yerel demoda kabul edilmiştir.
+## 4. Browser credits and access
 
-API bakiyeyi ve hareketi PostgreSQL transaction’ında yönetir. Üretimden önce 3 kredi ayrılır. Orijinal storage’a yazılıp teslim edilebilir olduğunda harcama kesinleşir. Kesin başarısızlıkta tutar serbest kalır. İstek veya WebSocket yeniden gönderilirse işlem anahtarı çift üretim ve harcamayı önler. Eşzamanlı iki istek aynı son kredileri kullanamaz.
+| Operation | Credits | Accounting |
+| --- | ---: | --- |
+| First browser session | +100 | One opening grant |
+| Chat, voice, brief refinement, search, preview | 0 | Empty searches are free |
+| First acquisition | −1 | Once per browser and asset |
+| Repeat download | 0 | Same entitlement and persistent URL |
+| New image or variation | −3 | Charge once on delivery. No separate source acquisition fee |
+| First publication of a unique external contribution | +1 | Once per distinct contribution |
 
-## 5. Servisler ve modeller
+Credits are product units. Provider spending is measured separately. Tabs and conversations in one browser share a balance. Clearing the cookie, using private browsing, or switching profiles creates a new demo session. Previous conversations remain associated with the old session.
 
-| Süreç | Sorumluluk |
-|---|---|
-| Go API | Tarayıcı bağlamı, HTTP/WebSocket, ses kaydını yazıya çevirme, arama, edinim, üretim, katkı, istatistik ve kredilendirme |
-| Go MCP | İç ağdaki araç çağrısını mevcut API işlemine aktarır. Ürün kuralları API’de uygulanır. |
-| TypeScript web agent | LangChain ile konuşmayı ve MCP araçlarını yürütür. Gerçek kartları, araç olaylarını ve kullanıcıya yönelik metni API’ye döndürür. |
-| Go image-extract-worker | Analiz kuyruğundan aldığı görselin açıklama ve özniteliklerini çıkarır. |
-| Go index-worker | Analizi standartlaştırır, vektörleri ve filtre alanlarını Qdrant’a yazar, yayımlamayı tamamlar. |
+The API records balance changes transactionally. Reserve 3 credits before generation, settle once the stored original can be delivered, and release on definite failure. Operation keys protect retries of HTTP requests and WebSocket messages. Concurrent requests cannot both spend the last available credits.
 
-| OpenRouter model kimliği | Görev |
-|---|---|
-| `meta/muse-ember` | Sohbet ve araç seçimi |
-| `openai/gpt-transcribe` | Ses kaydını özgün dilinde sohbet mesajına çevirmek |
-| `meta/muse-image` | Prompt’tan üretim ve referansla düzenleme |
-| `openai/gpt-6-luna-decisions` | Ortak katalog kabul kurallarını değerlendirme |
-| `meta/muse-glimmer-30b` | Görselden yapılandırılmış analiz |
-| `qwen/qwen3-embedding-8b` | Açıklama ve metin sorgusu için embedding |
-| `google/gemini-embedding-2` | Görsel ve referans görsel için embedding |
+## 5. Services and models
 
-## 6. Uçtan uca işlemler
+| Process | Responsibility |
+| --- | --- |
+| Go API | Browser context, HTTP/WebSocket, transcription, search, acquisition, generation, contributions, statistics, and credits |
+| Go MCP | Forward internal tool calls to their API operations with the same browser context |
+| TypeScript web agent | Run the LangChain conversation and MCP tools. Stream real cards, tool events, and response text |
+| Go image-extract-worker | Consume analysis jobs and extract validated descriptions and attributes |
+| Go index-worker | Normalize analysis, write vectors and filters, and complete publication |
 
-**Arama.** API, metin sorgusunu Qwen ile, dış referansı Gemini ile embed eder. Katalogdan seçilen bir referansın erişilebilir kayıtlı vektörü yeniden kullanılır. Kesin filtreler, görünürlük ve ilgili skor eşiği uygulanır. API ve MCP’de isteğe bağlı `top_k` 1–10 arasında bir tam sayıdır (varsayılan 5). En fazla istenen sayıda önizleme, dosya özellikleri ve kullanım bilgileri döner. API güçlü eşleşmeleri `items` içinde döndürür. İstek `include_nearest: true` içeriyorsa ve güçlü eşleşme yoksa tüm kesin filtreleri geçen tek aday, alt eşiği geçtiğinde `nearest` alanında gelir. MCP ve web bu seçeneği kullanır. Yanıtta `score_threshold`, `candidate_threshold`, `metric` ve `vector`, kartta `match.score`, `match.percent` ve `match.level` bulunur. Yüzde, kosinüs skorunun yuvarlanmış gösterimidir. Boş liste başarılı bir yanıttır. Otomatik ücretli üretim başlatılmaz.
+All seven model IDs and their roles appear in the server profiles in section 12.
 
-**Orijinali alma.** API ilk edinim ve kredi hareketini birlikte kaydeder. Kalıcı bir Imavara adresi verir. İndirmede tarayıcı hakkını kontrol edip Garage/S3’ten dosyayı sunar. Normal katalogdan çekmede yeni arama ve edinimler kapanır, önceki edinimlerin yeniden indirme hakkı korunur. Hak ihlali nedeniyle kaldırma ayrı ele alınır.
+## 6. End-to-end operations
 
-**Üretim.** API prompt’u, oranı ve varsa erişilebilir referansı Muse Image’a gönderir. Orijinal önce S3’e yazılır. Kullanıcı aynı istekte çıktı alır. Her üretim ve varyasyon teslimle birlikte otomatik olarak ortak katalog kuyruğuna girer. Kabul edilen görsel indeksleme tamamlandığında herkesçe aranabilir. Katalog kalitesinden dolayı reddedilmesi özel teslime engel olmaz. Geçici ve güvenle tekrarlanabilen hatalarda aynı istek süresi içinde en fazla iki tekrar önerilir. Sağlayıcının işi alıp almadığı belirsizse körlemesine yeni üretim başlatılmaz.
+**Search.** Embed text with Qwen and external reference images with Gemini. Reuse a stored vector for an accessible catalog reference. Apply visibility, license, exact filters, and the appropriate similarity threshold. API and MCP accept integer `top_k` from 1 to 10, default 5. Strong matches appear in `items` with previews, file properties, and usage information. When `include_nearest: true` and no strong match exists, a single eligible candidate above the lower cutoff can appear in `nearest`. MCP and web request this behavior. Responses expose `score_threshold`, `candidate_threshold`, `metric`, and `vector`. Cards expose `match.score`, `match.percent`, and `match.level`. The percentage is a rounded cosine score. An empty search succeeds without triggering paid generation.
 
-**Dış katkı.** Web aynı seçimdeki kopyaları erkenden ayıklayabilir. API dosyayı doğrular, boyutları okur ve ham byte’lardan SHA-256 hesaplar. Qdrant’ta içerikten türetilen sabit point kimliğiyle birebir kopya kontrolü yapılır. Görsel embedding’iyle yakın adaylar bulunabilir. Küçük ama anlamlı bir varyasyon yalnızca yüksek benzerlik nedeniyle birebir kopya sayılmaz. Eşzamanlı yükleme ve tekrarlar çift katalog kaydı veya çift ödül oluşturmamalıdır.
+**Acquisition.** Record the first acquisition and credit movement together. Return a persistent Imavara URL. Check rights when serving the original from Garage/S3. Ordinary withdrawal closes new searches and acquisitions while preserving previous download entitlements. Rights-related removal is handled separately.
 
-**Kabul.** Dış katkılar ve otomatik sıraya alınan üretimler Luna değerlendirmesinden geçer. Aynı dosya katalogda tekilleştirilir. Sürümlü sorular örneğin belirgin filigranı, okunabilir özel bilgiyi, ağır bozulmayı ve kapsam dışı içeriği değerlendirir. API karar skorlarını kabul, ret veya inceleme sonucuna ve gerekçe kodlarına dönüştürür. Model erişim hatası katalog reddinden ayrı bildirilir. Paylaşım izni ve kullanım koşulları ayrıca kaydedilir.
+**Generation.** Submit the prompt, ratio, and accessible reference to Muse Image. Store the original in S3 before delivery in the same request. Automatically queue every generation and variation for catalog admission. Publication makes an accepted image searchable across browsers. A catalog rejection preserves delivery to the owner. Allow up to two safely retryable transient failures within the request. An ambiguous provider outcome must not start a second generation.
 
-**Analiz ve indeksleme.** Kabul ile RabbitMQ’ya yayınlanacak iş birlikte kalıcı olarak kaydedilir. Kuyruk mesajı görsel byte’ları yerine `asset_id`, `object_key` ve sürümü taşır. Analiz worker’ı S3’ten okur, Glimmer JSON’unu doğrular ve sürümlü saklar. İndeks mesajının yayın onayından sonra ilk mesajı ACK eder. İndeks worker’ı filtreleri ve embedding’leri hazırlar, güncel paylaşım durumunu kontrol eder, Qdrant’a yazar. Yayımlama ve varsa dış katkı ödülü kaydedildikten sonra ACK verir. Tekrarlar aynı görsel ve sürüm üzerinde güvenlidir. Sürekli başarısız işler hata kuyruğunda incelenir.
+**External contributions.** The browser may catch repeated selections early. The API validates the actual file, reads dimensions, and hashes the bytes with SHA-256. Look up the content-derived Qdrant point ID and compare the full hash. Visual embeddings can identify similar candidates. Small meaningful variations remain distinct. Concurrent uploads and retries must yield at most one catalog record and reward.
 
-**Sesli giriş.** Tarayıcı “Gönder” ile kaydı kapatır ve mevcut oturum üzerinden Go API’ye gönderir. API ses biçimini ve istek boyutunu doğrular, OpenRouter’dan metni alıp tarayıcıya döndürür. Ham ses yalnızca transkripsiyon süresince işlenir. Tarayıcı boş olmayan metni aynı konuşmaya (açılışta yeni konuşmaya) mevcut WebSocket akışından otomatik gönderir. Gönderim kimliği çift dokunmada veya bağlantı tekrarında aynı kayıttan ikinci mesaj ve ikinci agent turu oluşmasını önler. Ürün kredisi ve araç çağrısı kuralları yazılı mesajla aynıdır.
+**Admission.** Evaluate external contributions and generated candidates with Luna. Version the questions for intrusive watermarks, legible private information, severe damage, and unsuitable content. Map rule scores to acceptance, rejection, or review with reasons. Track provider failure separately and record sharing permission and usage terms.
 
-**Canlı sohbet.** React ve Go API arasında WebSocket; Go API ile iç agent arasında olay akışı vardır. Web agent, MCP üzerinden aynı API işlemlerini kullanır. Arayüz gerçek araç başlangıcı, dönen kartlar, metin parçaları, teslim ve hata olaylarını gösterir. Mesaj kimliği, ücretli araç işlem anahtarı ve olay sıra numarası tekrarları ayırt eder. Yeniden bağlantıda API tamamlanmış mesaj, kart ve işlem durumunu PostgreSQL’den yükler.
+**Extraction and indexing.** Persist the admission and pending job together. RabbitMQ carries `asset_id`, `object_key`, and version. The extraction worker reads the original from S3, validates Glimmer JSON, and stores a versioned result. Acknowledge the first delivery after the broker confirms the index message. The index worker prepares embeddings and filters, checks current sharing state, and writes Qdrant. Acknowledge after durable publication and any external contribution reward. Replaying the same asset version must be safe. Inspect repeated failures in the failure queue.
 
-## 7. Veri, filtreler ve ölçüm
+**Voice.** Send the recording to the Go API in the browser session. Validate format and request size, obtain a transcript from OpenRouter, and return the text. Raw audio exists only for transcription. Auto-submit a nonempty transcript over the existing chat WebSocket, creating a conversation on the landing screen. Preserve the submission ID across double taps and reconnects. Written and spoken messages have identical tool and credit rules.
 
-- **Garage/S3.** Orijinaller, açık önizlemeler ve özel analiz dosyaları ayrı erişim alanlarında tutulur. Sürümlü JSON tekil analiz ve yeniden indeksleme içindir. Toplu analitik dışa aktarım için Parquet düşünülmüştür. Dosya referansı ve hash yeterlidir; bağımsız veri kümesi dışa aktarımında görsel byte’ları ayrıca eklenebilir. Qdrant snapshot’ları da saklanabilir.
-- **Qdrant.** Her katalog görseli bir point’tir. Aynı point üzerinde iki ayrı named vector bulunur: `text` ve `image`. Model, boyut ve benzerlik eşiği alan başına seçilir. Float orijinallerle yeniden puanlama ve binary quantization hedeflenir. İlk toplu yüklemeden önce kullanılan payload filtrelerine indeks açılır.
-- **Glimmer alanları.** Açıklama, ana konu, nesneler, insan varlığı, sahne, perspektif, ışık, atmosfer, stil, renk ailesi, ana konunun ve boş alanın konumu, okunan yazı, etiketler, olası kullanım alanları. Kontrollü filtrelerde belirsizlik için `unknown` desteklenir.
-- **Kesin alanlar.** Genişlik, yükseklik, oran, dosya biçimi, alfa, byte boyutu ve hash dosyadan gelir. Görünürlük, kaynak, varsa `parent_asset_id`, model, paylaşım ve kullanım izinleri uygulama kaydından gelir. Qdrant filtreleri örneğin oran, asgari çözünürlük, stil, renk, boş alan, insan/yazı varlığı, görünürlük ve lisansı kapsar.
-- **PostgreSQL.** Tarayıcı oturumu, kredi hareketleri, edinimler, konuşmalar, mesajlar, kart sırası, yayımlama ve arama olayları burada tutulur. Bir aramaya bir `search_id`, dönen her adaya bir `(search_id, asset_id, sıra)` kaydı yazılır. İlk edinim `(browser_id, asset_id)` çifti için tekildir. Tarih aralığında ilk sayaç “en sık dönenleri”, ikincisi “en çok edinilenleri” verir. Tekrar indirme ve popüler listeyi görüntüleme bu sayıları şişirmez.
-- **Gözlemlenebilirlik.** Ortak Go logger’ı, istek ve işlem kimlikleri kullanılır. Prometheus ve servis başına Grafana panoları arama süresi, boş sonuç, model hatası, maliyet, kuyruk yaşı ve yayına kadar geçen süreyi izler. Yerelde Sentry anahtarı gerekmez.
+**Live chat.** React uses WebSocket to reach the API. The API streams events from the private agent. The browser displays actual tool starts, cards, text chunks, delivery, and errors. Message IDs, paid-operation keys, and event order distinguish retries. On reconnect, reload completed messages, cards, and operation state from PostgreSQL.
 
-## 8. Arayüz sözleşmeleri
+## 7. Data, filters, and measurement
 
-Aşağıdaki yollar önerilen MVP sözleşmesidir. `/me` aktif tarayıcıyı ifade eder. API ve MCP aynı fiyat ve işlem kurallarını uygular.
+- **Garage/S3** separates originals, public previews, and private analyses. Versioned JSON supports per-asset inspection and reindexing. Parquet is an option for batch analytics. A reference and hash suffice for normal processing. A standalone dataset export may also include image bytes. Store Qdrant snapshots separately.
+- **Qdrant** holds one point per published image with two named vectors, `text` and `image`. Choose model, dimensions, and score threshold per field. Use binary quantization with original-vector rescoring. Create payload indexes before the initial batch.
+- **Glimmer** supplies descriptions, subjects, objects, people presence, scene, perspective, light, mood, style, colors, subject placement, copy space, visible text, tags, and potential uses. Controlled fields support uncertainty.
+- **File metadata** supplies width, height, ratio, format, alpha, byte size, and hash. Application records supply visibility, origin, parent asset, model, sharing, and license. Search filters include aspect, resolution, style, color, copy space, people, text, visibility, and license.
+- **PostgreSQL** stores sessions, ledger entries, acquisitions, conversations, messages, card order, publication, and search events. Record one search ID and one ranked return per asset in that search. First acquisition is unique per browser/asset pair. Aggregate returns and acquisitions over a date range for separate popularity lists. Repeat downloads and viewing a popularity list do not increment either count.
+- **Observability** uses shared Go logging, request and operation IDs, Prometheus, and a Grafana dashboard per service. Track latency, empty searches, provider errors and costs, queue age, and time to publication. Local operation supports an empty Sentry DSN.
 
-| API | İşlev | MCP aracı |
-|---|---|---|
-| `GET /v1/me`, `GET /v1/pricing`, `GET /v1/me/credits/transactions` | Bakiye, tarife ve geçmiş | `get_balance` bakiye ve tarifeyi sunar |
-| `POST /v1/search` | Metin veya referansla ücretsiz arama | `search_images` |
-| `GET /v1/assets`, `GET /v1/assets/{id}` | Galeri ve görsel detayı | `get_image` detay için |
-| `POST /v1/assets/{id}/acquire`, `GET /v1/assets/{id}/original` | İlk edinim ve orijinal dosya | `acquire_image` |
-| `POST /v1/generations` | Üretim veya referansla varyasyon | `generate_image` |
-| `POST /v1/contributions` | Dosya bazında katkı, toplu seçimde ayrı sonuçlar | `contribute_image` |
-| `GET /v1/me/assets`, `PATCH /v1/assets/{id}`, `DELETE /v1/assets/{id}` | Kitaplık, paylaşım ve kaldırma | Web |
-| `GET /v1/stats/assets` | `acquisitions` veya `search_returns` ve dönem filtresi | Web |
-| `POST /v1/audio/transcriptions` | Tarayıcıdan multipart kaydı alır ve `{"text":"…"}` döner. Web bu metni sohbet kanalına otomatik gönderir. | Web |
-| Konuşma oluşturma, listeleme, açma, silme ve WebSocket | Persist edilen geçmiş, yeni mesaj ve canlı olaylar | Web agent girişi |
+## 8. Interface contracts
 
-## 9. İki repo ve kod sahipliği
+The following routes describe the MVP contract. `/me` refers to the current browser. API and MCP share prices and operation semantics.
 
-| Repo / hedef dizin | İçerik |
-|---|---|
-| `imavara-web/src/app`, `features/{chat,discover,assets,contributions,library}` | Yönlendirme, açılıştan sohbete geçiş, Keşfet, kitaplık ve katkı |
-| `imavara-web/src/components`, `src/api` | Ortak görsel kartları, HTTP ve WebSocket istemcileri |
-| `imavara-server/cmd/{api,mcp,image-extract-worker,index-worker}` | Tek Go modülünden dört bağımsız süreç ve container |
-| `imavara-server/internal/{catalog,search,credits,generation,chat,extraction,indexing}` | İş kuralları ve süreçlerin uygulaması |
-| `imavara-server/internal/platform` | S3, RabbitMQ, OpenRouter, veritabanı bağlantıları ve gözlemlenebilirlik |
-| `imavara-server/agent` | Kendi paket tanımı ve Docker imajı olan TypeScript/LangChain servisi, MCP istemcisi ve sistem prompt’u |
-| `imavara-server/contracts`, `migrations`, `deploy`, `docker-compose.yml` | Sürümlü HTTP/olay/kuyruk şemaları, PostgreSQL migration’ları, Qdrant ve yerel servis ayarları |
+| API | Purpose | Consumer or MCP tool |
+| --- | --- | --- |
+| `GET /v1/me`, `GET /v1/pricing`, `GET /v1/me/credits/transactions` | Balance, prices, history | Web, `get_balance` |
+| `POST /v1/search` | Free text or reference search | `search_images` |
+| `GET /v1/assets`, `GET /v1/assets/{id}` | Gallery and asset details | Web, `get_image` |
+| `POST /v1/assets/{id}/acquire`, `GET /v1/assets/{id}/original` | Acquire and download original | `acquire_image`, web |
+| `POST /v1/generations` | Generate or vary a reference | `generate_image` |
+| `POST /v1/contributions` | Per-file submission and outcome | `contribute_image`, web |
+| `GET /v1/me/assets`, `PATCH /v1/assets/{id}`, `DELETE /v1/assets/{id}` | Library, sharing, removal | Web |
+| `GET /v1/stats/assets` | Period-filtered `acquisitions` or `search_returns` | Web |
+| `POST /v1/audio/transcriptions` | Multipart recording in, `{"text":"…"}` out. Auto-submit the text to chat | Web |
+| Conversation create/list/open/delete and WebSocket | Saved history, new messages, live events | Web agent entry point |
 
-API, kredilerin ve görsel erişiminin sahibidir. MCP araçları ve agent bu kuralları çoğaltmaz. Web ile backend arasındaki bağımsızlık sürümlü sözleşmelerle korunur. Yerel kurulumun odağı Compose’tur.
+## 9. Repositories and code ownership
 
-## 10. Ağ ve storage sözleşmesi
+The web repository owns the shell in `src/app`, product screens in `src/features`, reusable cards in `src/components`, and HTTP/WebSocket integration. The server's single Go module builds independent binaries under `cmd/{api,mcp,image-extract-worker,index-worker}`. Domain packages under `internal` implement catalog, search, credits, generation, chat, extraction, and indexing. Shared integrations live under `internal/platform`.
 
-Tarayıcıdan erişilmesi gereken backend yüzeyi Go API'dir. Yerel öneri `127.0.0.1:8080`; React geliştirme sunucusu `/v1` ve WebSocket yolunu bu adrese proxy edebilir. Böylece web tek origin ve aynı çerezle çalışır. Bir private LAN demosunda tarayıcılara yalnızca web girişi ve gerektiğinde API adresi duyurulur. Docker ağında API ve worker'lar Garage'a örneğin `http://garage:3900` üzerinden erişir.
+The TypeScript LangChain service, MCP client, system prompt, package manifest, and Docker image live in `agent/`. See `contracts/`, `migrations/`, `deploy/`, and `docker-compose.yml` for schemas, database migrations, Qdrant, and infrastructure settings. The API owns credit and file-access decisions. Versioned contracts let front and back ends evolve independently.
 
-| Trafik | MVP'deki yol |
-|---|---|
-| Tarayıcıda önizleme / orijinal | API, kartta önizleme URL'si döndürür. Kalıcı orijinal yolu `GET /v1/assets/{id}/original` tarayıcı hakkını kontrol edip dosyayı aktarır. |
-| Toplu katkı | Tarayıcı dosya başına API'ye gönderir. API gerçek biçimi doğrular, hash alır, S3'e kaydeder. |
-| Araçlar ve kuyruk | MCP, agent, RabbitMQ, Qdrant ve PostgreSQL iç ağdadır. Yönetim portları ürün yüzeyine dahil edilmez. |
-| OpenRouter'a görsel girişi | Yerel dosyayı API/worker iç storage'dan okur; ilgili endpoint'in desteklediği inline görsel biçiminde dışarı giden HTTPS çağrısına ekler. Bu taşıma yalnızca sağlayıcı sınırındadır; RabbitMQ'da nesne anahtarı kalır. Endpoint için inline desteği ilk entegrasyonda doğrulanır. Sağlayıcı yerel Docker URL'sini çözemez. |
-| İsteğe bağlı ikinci adres | Doğrudan medya sunma ihtiyacı çıkarsa yalnızca açık önizlemeler için salt okunur bir medya URL'si tanımlanabilir. Sağlayıcının URL gerektirdiği özel dosya için dosyaya özel, dışarıdan erişilebilir süreli okuma URL'si ayrı seçenektir. S3 yönetim/yazma yüzeyi, özel orijinaller, Parquet ve yedekler iç erişimde kalır. |
+## 10. Network and storage contract
 
-## 11. Qdrant koleksiyon sözleşmesi
+The browser reaches the Go API through Vite's same-origin proxy for `/v1` and WebSocket. Compose maps the API's container port 8080 to localhost port 18080 by default. In a trusted LAN demo, expose the web entry point and the API address only if needed. API and workers access Garage over the internal network, e.g. `http://garage:3900`.
 
-İlk yüklemeden önce tek seferlik bir kurulum adımı koleksiyonu, iki named vector alanını ve aşağıdaki payload indekslerini oluşturur. Filtreli HNSW grafiği bu indeksleri kullanarak inşa edilir. Servis başlatılırken mevcut şema doğrulanır. Sürüm değişiminde yeni koleksiyona yeniden indeksleme ve doğrulama ardından okuma alias'ını taşıma öngörülür. [Qdrant indeksleme](https://qdrant.tech/documentation/manage-data/indexing/)
+| Traffic | Path |
+| --- | --- |
+| Preview and original | Use the card's preview URL. `GET /v1/assets/{id}/original` checks entitlement before streaming the file. |
+| Batch contribution | Submit each file to the API, validate format, hash it, and store it in S3. |
+| Tools and queues | MCP, agent, RabbitMQ, Qdrant, and PostgreSQL communicate internally. Administrative ports are separate from the product entry point. |
+| Provider image input | Read from private storage and send a supported inline representation over outbound HTTPS. RabbitMQ retains object keys. Verify inline support during integration. The provider cannot resolve local Docker URLs. |
+| Optional media host | A read-only media address can serve public previews. If a provider needs a URL for private input, use a temporary object-specific read URL. Keep S3 administration, writes, private originals, Parquet, and backups internal. |
 
-| Alan | Tür | Kullanım |
-|---|---|---|
-| `owner_browser_id` | uuid | Tarayıcıya ait özel kitaplık indekslendiğinde sahiplik filtresi |
-| `visibility`, `catalog_status`, `license_scope` | keyword | Her genel aramada yalnızca yayımlanmış, ortak ve kullanıma izinli kayıtlar |
-| `aspect_ratio`, `orientation`, `mime_type` | keyword | Örn. 4:3, yatay, image/png |
-| `style`, `theme`, `color_family`, `negative_space` | keyword, gerektiğinde değer dizisi | Kontrollü sözlükle estetik ve kompozisyon filtreleri |
-| `width`, `height` | integer | Piksel cinsinden minimum veya aralık sorgusu |
-| `has_people`, `has_text`, `has_alpha` | bool | Gerçekten belirlenmiş özellikler; analiz belirsizse alan boş bırakılır. |
-| `published_at` | datetime | Yayın zamanı aralıkları ve yeni görseller |
- 
-Bir dosyanın tam SHA-256 değeri payload'da tutulur. Kesin eşleşme, hash'ten türetilen UUID ile point okuması ve tam hash karşılaştırmasıdır. Kopya kontrolü için yoğun vektör veya tüm açıklamaya full-text indeks gerekmez. Aynı özel dosyanın varlığı başka tarayıcıya açıklanmaz. Her görselin ortak katalog kimliği, tarayıcı bazlı edinim kayıtlarından ayrıdır.
+## 11. Qdrant collection contract
 
-**Sunucu arama profili.** `text` 1024 ve `image` 768 boyutlu float32, ikisi de Cosine. İlk deneme için orijinal vektörler diskte, 1-bit binary temsil bellekte; HNSW `m=16`, `ef_construct=100`, sorguda `hnsw_ef=128`, quantization `oversampling=3.0` ve `rescore=true`. Bunlar Imavara için başlangıç ayarlarıdır. Sunucu ilgili vektör alanını seçer, payload filtrelerini uygular, orijinal vektörlerle yeniden puanlanan adaylarda alana özgü minimum skoru uygular ve istenen `top_k` kadar aday dönebilir. [Qdrant quantization](https://qdrant.tech/documentation/manage-data/quantization/)
+Bootstrap the collection, both named vectors, and payload indexes before ingesting images. The filtered HNSW graph benefits from indexes present at creation. Verify existing schemas at startup. For incompatible schema revisions, plan to populate and validate a new collection before moving the read alias. [Qdrant indexing](https://qdrant.tech/documentation/manage-data/indexing/)
 
-**Kalibrasyon.** Yaklaşık 100 Türkçe/İngilizce metin sorgusu ve ayrıca görsel referanslar hazırlanır. Katalogda karşılığı olmayan istekler, sol/sağ boşluk gibi zor ayrımlar ve sıkı filtre birleşimleri sete girer. Tam hassasiyetli kesin aramaya göre ilk beşte isabet, hatalı sonuç dönen boş sorgu oranı ve p95 gecikme ölçülür. Metin ve görsel için iki ayrı eşik ayarlanır, ayrılmış örneklerde doğrulanır ve koleksiyon/model sürümüyle kaydedilir. Arama eşiği, katalog kabulü ve yakın kopya tespiti bağımsız kararlardır.
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `owner_browser_id` | UUID | Ownership filtering if private-library indexing is added |
+| `visibility`, `catalog_status`, `license_scope` | Keyword | Restrict public search to published, shared, licensed records |
+| `aspect_ratio`, `orientation`, `mime_type` | Keyword | E.g. 4:3, landscape, image/png |
+| `style`, `theme`, `color_family`, `negative_space` | Keyword, including arrays | Controlled visual and composition filters |
+| `width`, `height` | Integer | Minimum or range in pixels |
+| `has_people`, `has_text`, `has_alpha` | Boolean | Omit undetermined values |
+| `published_at` | Datetime | Date ranges and recent publications |
 
-**Yerleşim.** Yerel MVP tek node ve tek veri volume’ü kullanır. Koleksiyon 16 shard ve replika faktörü 1 ile oluşturulur. Snapshot geri yüklemesiyle yeni bir koleksiyonun aranabilirliği ayrıca sınanır.
+Keep the full SHA-256 in the payload. Identify exact duplicates using a hash-derived UUID and full hash comparison. Keep private file existence confidential and acquisition records independent of catalog IDs.
 
-## 12. Sunucu model profili v1
+**Search profile.** Both `text[1024]` and `image[768]` use float32 and cosine distance. Initial settings use original vectors on disk and one-bit binary representations in memory, HNSW `m=16`, `ef_construct=100`, query `hnsw_ef=128`, `oversampling=3.0`, and `rescore=true`. Select the appropriate field, apply payload filters, rescore originals, and enforce thresholds and `top_k`. [Qdrant quantization](https://qdrant.tech/documentation/manage-data/quantization/)
 
-Aşağıdakiler uygulama için önerilen sabitlerdir. HTTP ve MCP sözleşmeleri yalnızca ürün girdilerini kabul eder: tarif, filtre, referans görsel ve istenen oran gibi. Model adı, sağlayıcı, sampling, reasoning, boyut ve ham sağlayıcı parametreleri için istemci override'ı sunulmaz. Profil sürümü, kullanılan model, istek maliyeti ve süre sunucuda izlenir.
+**Calibration.** Use about 100 labeled Turkish/English queries plus image references, including absent subjects, left/right copy space, and strict filter combinations. Compare to exact search, measure top-five hits, false returns on unanswerable queries, and p95 latency. Tune separate text and image thresholds on calibration cases and record held-out results with model and collection versions. Search relevance, duplicate detection, and catalog admission are separate decisions.
 
-| Model | Başlangıç profili ve gerekçesi |
-|---|---|
-| `meta/muse-ember` | `temperature=0.3`, `reasoning.effort=low`, `tool_choice=auto`, streaming açık. Araç çağrıları ve referans seçiminde tutarlılık, kısa yanıtta doğal dil hedeflenir. Sabit thinking token sayısı gönderilmez. Sunucu yalnızca gerçek araç olayları ve kullanıcıya yönelik yanıtı WebSocket'e aktarır. MVP boyunca effort sabit kalır. [OpenRouter endpoint özellikleri](https://openrouter.ai/api/v1/models/meta/muse-ember/endpoints) · [Ember reasoning seviyeleri](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/meta/muse-ember-1-0) |
-| `openai/gpt-transcribe` | Go API, tamamlanan kaydı OpenRouter `POST /api/v1/audio/transcriptions` yoluna `input_audio.data` ve `input_audio.format` ile gönderir. Kayıt süresi, transkripsiyon gecikmesi ve sağlayıcı maliyeti izlenir. İlk uçtan uca denemede Türkçe bir görsel tarifi, oran ve yön sözcükleriyle gerçek tarayıcı kaydından gönderilir. [OpenRouter model kartı](https://openrouter.ai/openai/gpt-transcribe) · [Transkripsiyon API’si](https://openrouter.ai/blog/tutorials/transcription-on-openrouter/) |
-| `meta/muse-image` | İşlem başına bir çıktı. Sıfırdan üretimde referans yok; varyasyonda bir referans ve korunacak özellikler açıkça iletilir. Kullanıcı oran belirtmezse yeni üretimde hedef 1:1, varyasyonda kaynağın oranı. Temperature, top_p, seed, kalite ve thinking için özel değer gönderilmez. Referans ve oran desteği seçilen Images endpoint'inde doğrulanır; gerçek piksel boyutu dosyadan okunur. Kesin oran karşılanmıyorsa bunu kullanıcıya bildir. [OpenRouter Muse Image](https://openrouter.ai/meta/muse-image) · [Image API endpoint sözleşmesi](https://openrouter.ai/blog/announcements/image-api/) |
-| `qwen/qwen3-embedding-8b` | Hedef 1024 boyut. Tam 4096'ya göre float vektör alanını dörtte bire indirir. Sorgu için sabit retrieval talimatı, doküman için Glimmer açıklaması + kompozisyon + kontrollü özellikler. Sağlayıcı istenen boyutu vermiyorsa modelin MRL desteğinden yararlanarak tam çıktının ilk 1024 bileşenini alıp L2 normalize etme yolu doğrulanabilir. API ve index-worker aynı dönüşümü kullanır. [Qwen model kartı](https://huggingface.co/Qwen/Qwen3-Embedding-8B) |
-| `google/gemini-embedding-2` | Hedef 768 boyut; Google'ın önerdiği kompakt boyutlardan biri. Aynı model ve dönüşüm katalog ile dış referansa uygulanır. Dönen uzunluk ve sonlu değerler doğrulanır; yanlış boyut indekse yazılmaz. Rota uyumu gerçek bir görselle sınanır. [OpenRouter Gemini Embedding 2](https://openrouter.ai/google/gemini-embedding-2) |
-| `meta/muse-glimmer-30b` | Önerilen sabit analiz profili: `reasoning.effort=low`, `reasoning.exclude=true`, `temperature=0.1`, `stream=false`, araç tanımı yok. Worker, v1 şemasını sistem talimatına ekler, `response_format.type=json_object` ile yanıt alır ve tam şemayı yerelde doğrular. Canlı denemede sağlayıcı tarafındaki strict şema, caption ve description alanlarında yalnızca üç nokta üretti. Açıklama kalitesi için yer tutucular reddedilir. Yönlendirmede `provider.require_parameters=true` kullanılır. [OpenRouter rota özellikleri](https://openrouter.ai/api/v1/models/meta/muse-glimmer-30b/endpoints) |
-| `openai/gpt-6-luna-decisions` | Sürümlü adlandırılmış evet/hayır soruları; chat sampling ayarı gönderilmez. Her kural için skor ve gerekçe kodu kaydedilir. Eşikler etiketli katalog örnekleriyle belirlenecek, kararsız alan incelemeye gidecek. [Decisions model kartı](https://openrouter.ai/openai/gpt-6-luna-decisions) |
+**Topology.** One local node, one volume, 16 shards, replication factor 1. Restore a snapshot into a separate collection and verify retrieval.
 
-**Kabul örnekleri.** Tarayıcının aynı isteği tekrarlaması ikinci ücret oluşturmaz. Sohbette “ikincisine benzer” mevcut kartın kimliğini kullanır ve ücretsiz kalır. “Bundaki fincanı kaldır” aynı referansla tek ücretli varyasyon üretir. Model rotasının değiştirilmesi sırasında boyut ve araç sözleşmeleri aynı örneklerle tekrar doğrulanır.
+## 12. Server model profile v1
 
-### 12.1 Glimmer analiz sözleşmesi
+Clients supply the brief, filters, reference, and desired ratio. The server owns provider selection, sampling, reasoning, dimensions, and model IDs. Track profile version, actual model, latency, and cost.
 
-Bir katalog görseli için tek çağrı yapılır. Worker modele görseli ve sürümlü analiz talimatını verir. Üretim prompt’u görselde bulunmayan bir nesnenin varlığına kanıt sayılabileceği için analize girdi olmaz. Açıklamalar ve etiketler ortak katalog dili olarak İngilizce, OCR ise görseldeki özgün dil ve yazımda saklanır. Türkçe ve İngilizce sorguların aynı görsele erişimi arama kalibrasyonuna dahildir. [Glimmer v1 JSON Schema](../contracts/glimmer-analysis.v1.schema.json)
+| Model | Settings and checks |
+| --- | --- |
+| `meta/muse-ember` | Chat and tool selection. Temperature 0.3, low reasoning effort, automatic tool choice, streaming on. Keep effort fixed without a fixed thinking-token budget. Stream real tool events and user-facing text. [Endpoints](https://openrouter.ai/api/v1/models/meta/muse-ember/endpoints) · [Reasoning levels](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/partner-models/meta/muse-ember-1-0) |
+| `openai/gpt-transcribe` | Transcribe in the original language through OpenRouter's `POST /api/v1/audio/transcriptions` using `input_audio.data` and `input_audio.format`. Measure recording duration, latency, and cost. Test a Turkish browser recording with ratio and direction words. [Model](https://openrouter.ai/openai/gpt-transcribe) · [API](https://openrouter.ai/blog/tutorials/transcription-on-openrouter/) |
+| `meta/muse-image` | One image per request. Send one reference for a variation and specify what to preserve. Default to 1:1 for new images or the reference ratio for variations. Use provider defaults for temperature, top_p, seed, quality, and thinking. Verify reference and ratio support and report the actual file dimensions and any discrepancy. [Model](https://openrouter.ai/meta/muse-image) · [Image API](https://openrouter.ai/blog/announcements/image-api/) |
+| `qwen/qwen3-embedding-8b` | Text retrieval at 1024 dimensions, one quarter the float storage of 4096. Use a fixed retrieval instruction for queries and description, composition, and attributes for documents. When receiving all 4096 dimensions, verify the MRL truncation to the first 1024 and L2 normalization. Share transformations between API and index worker. [Model](https://huggingface.co/Qwen/Qwen3-Embedding-8B) |
+| `google/gemini-embedding-2` | Embed catalog and reference images at 768 dimensions using the same model and transformation. Check length and finite values before indexing. Verify the route with a real image. [Model](https://openrouter.ai/google/gemini-embedding-2) |
+| `meta/muse-glimmer-30b` | Low reasoning, `exclude=true`, temperature 0.1, streaming off, no tools. Include v1 schema in the system message, request a JSON object, and validate locally. Provider-side strict schema returned literal ellipses for caption and description in a live test. Reject placeholders. Route with `provider.require_parameters=true`. [Endpoints](https://openrouter.ai/api/v1/models/meta/muse-glimmer-30b/endpoints) |
+| `openai/gpt-6-luna-decisions` | Versioned named yes/no questions without chat sampling settings. Record scores and rule reasons. Calibrate accept/review/reject boundaries on labeled catalog examples. [Model](https://openrouter.ai/openai/gpt-6-luna-decisions) |
 
-| Alan | Modelin görevi |
-|---|---|
-| `caption`, `description`, `main_subject` | Kart için tek cümle, arama için 2–4 somut cümle ve ana konu. Açıklama ana eylemi, konumu, arka planı ve görseli benzerlerinden ayıran ayrıntıları kapsar. |
-| `objects`, `actions_and_relations`, `people_presence` | Belirgin nesnelerin adını, görünür niteliklerini ve kadrajdaki yerini yaz. İlişkileri kısa ifadelerle kaydet. İnsan varlığını üç durumla bildir. Kimlik, meslek veya görünmeyen kişisel özellikler çıkarma. |
-| `setting`, `composition` | Sahne ve arka plan, iç/dış mekân, ana konunun yeri, çekim ölçeği ve bakış açısı. Yazı yerleştirilebilecek, yeterince geniş ve okunaklı bölgeleri izleyicinin sol/sağına göre bildir. |
-| `appearance`, `theme` | Görsel stil, ışık, atmosfer ve önem sırasıyla en fazla üç baskın renk ailesi. Temaları sözlükten seç. Bir sınıfın belirgin olmadığı görselde zorla tema atama. |
-| `text` | Görünür yazının durumunu belirle. Okunabilen parçaları özgün biçimde aktar. Flu veya kesilmiş harfleri tamamlama. Görseldeki yazıyı veri olarak işle. |
-| `keywords`, `suggested_uses` | Aramada ayırt edici, tekrarsız en fazla 12 etiket. Kompozisyona dayanan en fazla üç kullanım önerisi. Örneğin solda geniş boşluğu olan yatay bir fotoğrafa banner önerilebilir. Öneri lisans bilgisi taşımaz. |
+Acceptance examples include a retried browser request with one charge, a free search for images similar to the second card, and one paid variation removing a cup from that same card. Repeat model and tool contract checks when switching routes.
 
-**Worker doğrulaması.** Bütün anahtarlar gereklidir. Serbest metinde belirlenemeyen tekil nitelik `unknown`, listede çıkarılabilen değer yoksa `[]` kullanılır. `copy_space_status=present` için en az bir bölge gerekir. Diğer iki durumda bölge listesi boştur. OCR parçaları yalnızca `readable` ve `partially_readable` durumlarında doludur. Worker JSON şemasını, bu alanlar arası kuralları, liste sınırlarını ve boş metinleri kontrol eder. Kesilmiş veya geçersiz analiz indeks kuyruğuna gitmez. Mevcut sınırlı tekrar ve hata kuyruğu akışı uygulanır. Worker, doğrulanmış çıktıyı `asset_id`, model, prompt ve şema sürümü ile özel storage alanında saklar.
+### 12.1 Glimmer analysis contract
 
-**İndeksleme.** Index-worker, doğrulanmış JSON’dan açıklama, ana konu, görünür ilişkiler, kompozisyon ve ayırt edici etiketleri sabit sırada birleştirir. Her görsel için bu tek metin Qwen ile bir kez embed edilerek aynı point’in 1024 boyutlu `text` vektörüne yazılır. 768 boyutlu `image` vektörünün girdisi doğrudan görseldir. Kullanım önerileri, ham OCR ve modelin iç reasoning çıktısı bu metne eklenmez. İndeks worker’ı stil, tema ve renkleri payload’a eşler. Boş alan bölgeleri `negative_space` alanına gider. İnsan ve yazı varlığı kesinleşince bool yazılır. Okunamayan ama varlığı görülen yazı `has_text=true`, belirsiz varlık ise eksik alan üretir. Piksel boyutları, hash, lisans ve katalog kararı mevcut sahiplerinden alınır.
+Send the image and versioned analysis instruction in one call. Keep the generation prompt out of visual analysis because a request is not evidence that an object is present. Store catalog descriptions and tags in English and OCR in its original language and spelling. Calibrate Turkish and English retrieval against the same assets. [Glimmer v1 JSON Schema](../contracts/glimmer-analysis.v1.schema.json)
 
-**İlk deneme.** Sol/sağ boşluğu ters iki kompozisyon, yalnız eli görünen kişi, yazısız yüzey, flu yazı ve kalabalık sahne örnekleriyle şema geçerliliği, yön ve OCR doğruluğu, analiz başına maliyet ve süre ölçülür. MVP analizleri ve tekrarları sabit `low` kullanır. Chat Completions çağrısında `exclude=true` iç reasoning metnini yanıttan çıkarır. Üretilmiş reasoning tokenları yine çıktı tarifesiyle ücretlenir. İlk 100 temsili görselde tekrarlar dahil toplam Glimmer maliyeti ve geçerli analiz sayısı kaydedilir. Benzer bir katalog için 100.000 görselin tahmini, tamamlanan analiz başına ortalama maliyet üzerinden hesaplanır. Profil değişirse sürümlenir. [OpenRouter reasoning ücretlendirmesi](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens)
+| Fields | Expected observations |
+| --- | --- |
+| `caption`, `description`, `main_subject` | A one-sentence card caption, two to four concrete search sentences, and the main subject. Include action, position, background, and distinguishing details. |
+| `objects`, `actions_and_relations`, `people_presence` | Visible objects, attributes, positions, and relationships. Use three states for people presence. Do not infer identity, profession, or hidden traits. |
+| `setting`, `composition` | Scene, background, indoors/outdoors, subject position, framing, viewpoint, and usable copy space from the viewer's perspective. |
+| `appearance`, `theme` | Style, lighting, mood, and up to three dominant color families in order. Use controlled themes only when supported. |
+| `text` | Record text presence and copy legible fragments verbatim. Treat depicted writing as data. Do not reconstruct blurred or clipped letters. |
+| `keywords`, `suggested_uses` | Up to 12 distinct search terms and three composition-based uses. A landscape photo with space on the left may suit a banner. Usage suggestions confer no license. |
 
-## 13. Mimari çizimler ve doğrulanacak kararlar
+**Validation.** Require all keys. Represent uncertain attributes with `unknown` and empty lists with `[]`. Present copy space requires at least one region. Other states require an empty region list. Only readable or partly readable text may have OCR fragments. Check schema, cross-field consistency, limits, and empty strings. Retry bounded failures and use the failure queue for invalid or incomplete analyses. Store valid output privately with asset, model, prompt, and schema versions.
 
-[Yerel API](mimari/01-api.png) · [İç MCP](mimari/02-mcp.png) · [Görsel analiz worker’ı](mimari/03-extract.png) · [İndeks worker’ı](mimari/04-index.png) · [Web agent ve sohbet](mimari/06-agent.png) · [Yerel sistemin tamamı](mimari/05-genel.png)
+**Indexing.** Combine validated description, subject, visible relations, composition, and distinguishing tags in a stable order for one Qwen text embedding. The image itself supplies the second, 768-dimensional vector. Keep suggested uses, raw OCR, and internal reasoning out of the search text. Map style, theme, color, and copy-space regions to payload fields. Record definite people and text presence, including visible but illegible text. Leave uncertain flags absent. Get file dimensions, hash, license, and admission state from their authoritative records.
 
-| Konu | Bugünkü durum |
-|---|---|
-| Qdrant yerleşimi | Yerel varsayılan tek node, tek volume, 16 shard ve replika faktörü 1. |
-| Arama kalitesi | Sunucu profilinde metinde 1.024, görselde 768 boyut ve cosine benzerliği. Sağlayıcının döndürdüğü boyutlar, binary quantization etkisi ve iki ayrı skor eşiği ilk katalogda doğrulanır. 0,80 sabit bir karar değildir. |
-| Katalog kabulü | Luna kural listesi ve kabul/inceleme/ret sınırları örnek görsellerle ayarlanır. Yakın görsellerde otomatik kopya davranışı da aynı koleksiyonda denenir. |
-| Özel kitaplık | Önceki konuşma ve görsellere erişim kapsamda. Paylaşılmayan tüm özel görseller için semantik indeksin hangi aşamada oluşturulacağı ayrıca seçilir. |
-| Saklama ve başlangıç | Otomatik sohbet saklama süresi, başlangıç koleksiyonunun kaynağı, inline görsel desteğinin uçtan uca testi ve gerçek sağlayıcı bütçesi doğrulanacak ayrıntılardır. |
+**Initial evaluation.** Include mirrored copy-space compositions, a visible hand, a surface without text, blurred writing, and a crowded scene. Measure schema validity, direction and OCR accuracy, latency, and cost per valid analysis. Keep low effort on retries. Excluding reasoning removes the text from the response while generated reasoning tokens can still incur output charges. Measure the first 100 representative images including retries. Project the cost of 100,000 comparable images from cost per completed analysis. Version profile changes. [Reasoning billing](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens)
 
-Uygulama sırası, tamamlanma koşulları ve son demo [MVP teslim planı ve kabul kriterlerinde](MVP-TESLIM-PLANI.md) yer alır.
+## 13. Architecture diagrams and open decisions
+
+[Local API](architecture/api.svg) · [Internal MCP](architecture/mcp.svg) · [Extraction](architecture/extract.svg) · [Indexing](architecture/index.svg) · [Web agent](architecture/agent.svg) · [System overview](architecture/overview.svg)
+
+Validate provider dimensions, binary quantization impact, and both similarity thresholds on the first catalog. The original 0.80 score suggestion is provisional. Tune Luna rules and review boundaries with examples and evaluate near duplicates separately. Private-library semantic indexing, chat retention, seed collection sourcing, end-to-end inline provider support, and the measured provider budget remain decisions to validate.
+
+See the [delivery plan and acceptance criteria](DELIVERY-PLAN.md) for sequencing, completion conditions, and the final demo.

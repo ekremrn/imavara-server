@@ -1,24 +1,18 @@
-# imavara-server değişiklik geçmişi
+# Server changelog
 
-Kayıt kapsamı ve sürüm çıkarma adımları için [AGENTS.md](AGENTS.md) içindeki değişiklik ve sürüm kurallarını izle.
+Follow the release and entry guidelines in [AGENTS.md](AGENTS.md).
 
-## Yayımlanmamış
+## Unreleased
 
-- Agent sonuç açıklamalarını Markdown olarak düzenler. Araç çağrıları arasındaki metinler ayrı paragrafta gösterilir.
-
-- RabbitMQ yönetim paneli Pi üzerinde localhost:15672 adresinde etkinleştirildi.
-
-- API ve MCP katalog aramasında isteğe bağlı `top_k` parametresi 1–10 sonuç sınırı seçer. Varsayılan 5’tir.
-
-- Aramada benzerlik skoru ve güçlü eşleşme bulunmadığında tek yakın aday desteği eklendi.
-
-- Üretim ve varyasyonlar teslimle birlikte ortak katalog değerlendirmesine girer. Eski özel durumdaki üretimler aynı işlem hattına alınır.
-
-- Yerel katalog 16 shard ve replika faktörü 1 ile tek Qdrant node’unda çalışır. Compose yeni `qdrant_data` volume’ünü kullanır. Eski katalog için geçiş notu README’dedir.
-
-- Repo çalışma rehberi ve değişiklik geçmişi eklendi.
-- Geliştirme rehberine servis teslim komutları ve yeniden teslimde metriklerin nasıl doğrulanacağı eklendi.
-- Yerel Go API ve PostgreSQL kurulumu, anonim tarayıcı oturumu, başlangıç bakiyesi, tarife ve kredi hareketleri eklendi.
-- Sohbet geçmişi, ses transkripsiyonu, iç MCP araçları ve LangChain agent için servis girişleri eklendi.
-- Katalog araması, dosya erişimi, edinim, üretim, katkı ve kuyruk işleme kodu ile servis panoları eklendi. Canlı model kabul kontrolleri sürüyor.
-- WebP orijinaller, gerçekleşen/istenen oran, özel referans yükleme, Türkçe transkripsiyon dil ipucu ve hata kuyruğu tekrar komutu eklendi.
+- Published the repository guides and architecture documentation in English.
+- Format agent responses in Markdown, separating text across tool calls into paragraphs.
+- Enabled the RabbitMQ management portal on the Pi at localhost port 15672.
+- Added optional `top_k` to API and MCP catalog searches. The limit is 1–10, with a default of 5.
+- Return similarity scores and an optional nearest candidate when there is no strong match.
+- Automatically submit delivered generations and variations for catalog admission, including backfilling previously private generations.
+- Run the local catalog on one Qdrant node with 16 shards and replication factor 1. Compose uses the new `qdrant_data` volume. See the README for migration instructions.
+- Added development and changelog guides, service verification commands, and metric checks for redelivered jobs.
+- Added the local Go API and PostgreSQL setup, anonymous browser sessions, initial grants, pricing, and a credit ledger.
+- Added chat history, voice transcription, internal MCP tools, and the LangChain agent.
+- Added catalog search, file access, acquisition, generation, contributions, queue processing, and service dashboards. Live model acceptance checks remain in progress.
+- Added WebP originals, actual and requested aspect ratios, private reference uploads, a Turkish transcription language hint, and a failed-job replay command.

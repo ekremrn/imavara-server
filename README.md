@@ -1,61 +1,61 @@
 # Imavara Server
 
-Imavara, bir görsel tarifini ortak fotoğraf kataloğunda arar. Kullanıcı mevcut bir görseli edinebilir, yeni bir fotoğraf üretebilir veya seçtiği görselden varyasyon isteyebilir. Bu repo, tarayıcıya hizmet veren API’yi, sohbet agent’ını ve üretilen görselleri kataloğa kazandıran servisleri içerir. [React arayüzü](https://github.com/ekremrn/imavara-web)
+Imavara searches a shared stock photo catalog from a visual brief. Users can acquire an existing photo, generate a new one, or request a variation of a specific result. This repository runs the browser API, chat agent, and services that publish generated images to the catalog. [React client](https://github.com/ekremrn/imavara-web)
 
-## Sistem nasıl çalışır?
+## Architecture
 
-![Imavara genel mimarisi — web, API, agent, iç MCP ve katalog servisleri](docs/mimari/05-genel.png)
+![Browser, API, agent, internal MCP and catalog services](docs/architecture/overview.svg)
 
-**Arama.** Keşfet doğrudan API’ye gider. Sohbette aynı işlemi LangChain agent’ı iç ağdaki MCP üzerinden çağırır. API metin veya referans görseliyle Qdrant’ta arar. `top_k` varsayılan olarak 5’tir ve 1–10 arasında seçilebilir. Yanıt, bulunan kartlarla birlikte benzerlik skorlarını taşır.
+**Search.** Discover calls the API directly. In chat, the LangChain agent uses internal MCP to call the same operations. The API searches Qdrant by text or reference image. Optional `top_k` accepts 1–10 and defaults to 5. Results carry similarity scores.
 
-**Üretim ve yayım.** API üretilen orijinali Garage’a kaydeder ve kullanıcıya teslim eder. Üretim ve varyasyonlar otomatik olarak katalog değerlendirmesine girer. RabbitMQ üzerinden çalışan analiz worker’ı kabul edilen görselin açıklamasını ve niteliklerini çıkarır. İndeks worker’ı metin ve görsel vektörlerini aynı Qdrant kaydına yazınca fotoğraf ortak aramada görünür. PostgreSQL tarayıcı oturumlarını, sohbetleri ve kredi hareketlerini tutar.
+**Generation and publication.** The API saves the original to Garage and delivers it to the requester. Generated images and variations enter catalog review automatically. The extraction worker processes RabbitMQ jobs and describes accepted images. The index worker writes text and image vectors to one Qdrant point. Once published, the image is available in shared search. PostgreSQL stores browser sessions, conversations, and the credit ledger.
 
-### Servis akışları
+### Service flows
 
 <details>
-<summary>Go API · Oturum, arama, üretim ve dosya teslimi</summary>
+<summary>Go API · Sessions, search, generation, and delivery</summary>
 
-![Go API · Oturum, arama, üretim ve dosya teslimi](docs/mimari/01-api.png)
+![Go API · Sessions, search, generation, and delivery](docs/architecture/api.svg)
 
 </details>
 
 <details>
-<summary>Web agent · Sohbetten araç çağrısına</summary>
+<summary>Web agent · From conversation to tool call</summary>
 
-![Web agent · Sohbetten araç çağrısına](docs/mimari/06-agent.png)
-
-</details>
-
-<details>
-<summary>İç MCP · Araç çağrısından API işlemine</summary>
-
-![İç MCP · Araç çağrısından API işlemine](docs/mimari/02-mcp.png)
+![Web agent · From conversation to tool call](docs/architecture/agent.svg)
 
 </details>
 
 <details>
-<summary>Analiz worker’ı · Görselden yapılandırılmış açıklamaya</summary>
+<summary>Internal MCP · From tool call to API operation</summary>
 
-![Analiz worker’ı · Görselden yapılandırılmış açıklamaya](docs/mimari/03-extract.png)
+![Internal MCP · From tool call to API operation](docs/architecture/mcp.svg)
 
 </details>
 
 <details>
-<summary>İndeks worker’ı · Analizden aranabilir kayda</summary>
+<summary>Extraction worker · From pixels to structured descriptions</summary>
 
-![İndeks worker’ı · Analizden aranabilir kayda](docs/mimari/04-index.png)
+![Extraction worker · From pixels to structured descriptions](docs/architecture/extract.svg)
 
 </details>
 
-## Yerel kurulum
+<details>
+<summary>Index worker · From analysis to a searchable record</summary>
 
-Docker Engine ve Compose ile repo kökünde başla. İlk kurulumda ortam dosyasını oluştur:
+![Index worker · From analysis to a searchable record](docs/architecture/index.svg)
+
+</details>
+
+## Local setup
+
+Install Docker Engine and Compose. From the repository root, create the environment file on first setup:
 
 ```sh
 cp .env.example .env
 ```
 
-Model çağrıları için `.env` içinde `OPENROUTER_API_KEY` tanımla. Sentry yerelde isteğe bağlıdır. Ardından servisleri başlat:
+Set `OPENROUTER_API_KEY` for model calls. Sentry is optional locally. Start the services and check readiness:
 
 ```sh
 docker compose up -d --build
@@ -63,26 +63,26 @@ docker compose ps -a
 curl -fsS http://127.0.0.1:18080/healthz
 ```
 
-`garage-init` ve `catalog-init` kurulumları tamamlandığında sıfır çıkış koduyla kapanır. Yeni Qdrant kurulumu tek node, tek veri volume’ü, 16 shard ve replika faktörü 1 kullanır.
+The one-shot `garage-init` and `catalog-init` containers exit with code zero after setup. A new Qdrant installation uses one node, one volume, 16 shards, and replication factor 1.
 
-| Yerel adres | Kullanım |
+| Local endpoint | Purpose |
 | --- | --- |
-| [API sağlık kontrolü](http://127.0.0.1:18080/healthz) | API’nin hazır olduğunu doğrulama |
-| [Grafana](http://127.0.0.1:13000) | Servislerin Prometheus metriklerini izleme |
-| [RabbitMQ](http://127.0.0.1:15672) | Analiz ve indeks kuyruklarını inceleme |
+| [API health](http://127.0.0.1:18080/healthz) | Check API readiness |
+| [Grafana](http://127.0.0.1:13000) | Inspect service metrics from Prometheus |
+| [RabbitMQ](http://127.0.0.1:15672) | Inspect extraction and indexing queues |
 
-## Test ve işletim
+## Testing and operations
 
-Servis loglarını `docker compose logs -f api image-extract-worker index-worker` ile izle. `docker compose down` kalıcı diskleri korur.
+Follow logs with `docker compose logs -f api image-extract-worker index-worker`. Stop the stack with `docker compose down` to retain the volumes.
 
-Go paket kontrolleri için `go test ./...` çalıştır. Kredi eşzamanlılığı testi için boş, geçici PostgreSQL bağlantısını `IMAVARA_TEST_DATABASE_URL` ile belirt. Test bu veritabanına migration uygular ve test kayıtları yazar.
+Run `go test ./...` for Go packages. To exercise credit concurrency, point `IMAVARA_TEST_DATABASE_URL` at an empty disposable PostgreSQL database. The test applies migrations and writes records.
 
-Sürekli hatalı işler üç denemeden sonra ilgili hata kuyruğunda kalır. Nedeni düzelttikten sonra `docker compose exec image-extract-worker replay -queue assets.extract.v1 -limit 1` ile tek bir işi yeniden dene. İndeks işleri için `assets.index.v1` kullan. Komut yalnız broker onayından sonra hata kuyruğundaki kopyayı kapatır.
+Jobs that repeatedly fail remain in their failure queue after three attempts. After fixing the cause, run `docker compose exec image-extract-worker replay -queue assets.extract.v1 -limit 1` to retry one extraction. Use `assets.index.v1` for indexing. Replay acknowledges the failed delivery after broker confirmation.
 
-Qdrant yedeği için indeks yazımlarının durduğu bir anda `docker compose exec index-worker snapshot` çalıştır. Tek node’un snapshot dosyası ve manifest Garage’ın özel snapshots bucket’ına yazılır. Çıkan kimliği `docker compose exec index-worker snapshot -id KIMLIK -restore-to YENI_KOLEKSIYON` ile kullan. Komut mevcut koleksiyonu korur, kurtarılan point sayısını ve bilinen bir referansla aramayı kontrol eder.
+For a Qdrant backup, pause indexing writes and run `docker compose exec index-worker snapshot`. The snapshot and manifest go into Garage's private snapshots bucket. Run `docker compose exec index-worker snapshot -id BACKUP_ID -restore-to NEW_COLLECTION` to restore into an unused collection. The command checks the point count and searches for a known image.
 
-Eski iki node’lu kurulumdan geçerken yeni `qdrant_data` volume’ü boş bir 16 shard koleksiyonuyla başlar. Mevcut katalog ve PostgreSQL kayıtlarını birlikte kullanmaya devam etmek için geçişten önce indeks yazımlarını durdur, eski koleksiyonun point kimliklerini, iki vektörünü ve payload’larını dışa aktar. Yeni koleksiyona aynı kimliklerle yükle, point sayısını ve bilinen aramaları doğrula. Eski volume’leri geçiş doğrulanana kadar sakla. Önceki iki parçalı snapshot eski topolojiyle geri yüklenir.
+**Migrating the old two-node deployment.** The new `qdrant_data` volume starts with an empty 16-shard collection. Pause indexing writes and export the original point IDs, both vectors, and payloads before migrating. Import them with the same IDs to preserve PostgreSQL associations. Verify counts and known searches before retiring the old volumes. Restore older two-part snapshots using their original topology.
 
-## Proje belgeleri
+## Project documentation
 
-[Ürün ve mimari planı](docs/IMAVARA-MVP.md) · [Servis görevleri](docs/MVP-SERVIS-GOREVLERI.md) · [Teslim kriterleri](docs/MVP-TESLIM-PLANI.md) · [Geliştirme rehberi](AGENTS.md) · [Değişiklik geçmişi](CHANGELOG.md)
+[Product and architecture](docs/IMAVARA-MVP.md) · [Service tasks](docs/SERVICE-TASKS.md) · [Delivery and acceptance](docs/DELIVERY-PLAN.md) · [Development guide](AGENTS.md) · [Changelog](CHANGELOG.md)

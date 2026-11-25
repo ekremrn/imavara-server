@@ -1,8 +1,8 @@
-# Yerel demo görselleri
+# Local demo images
 
-Bu iki stok örneği Imavara demosu için OpenRouter üzerinden `meta/muse-image` ile üretildi. Özgün 1920 × 1280 WebP dosyalarından ortalı 4:3 kadraj alındı ve 1024 × 768 JPEG’e dönüştürüldü. Demo kataloğunda paylaşılmak ve katkı, benzerlik ve filtre kontrollerinde kullanılmak üzere projeye eklendi.
+The two café fixtures were generated for Imavara through OpenRouter with `meta/muse-image`. Each 1920 × 1280 WebP original was center-cropped to 4:3 and exported as a 1024 × 768 JPEG for sharing in the demo catalog and testing contribution, similarity, and filters.
 
-- `cafe.jpg` açık bej bir masada sağda beyaz seramik espresso fincanı, solda yazı için boşluk isteğiyle üretildi.
-- `cafe-window.jpg` pencere ışığında yeşil bir kupa ve solda boşluk isteğiyle üretildi.
+- `cafe.jpg` was requested with a white ceramic espresso cup on the right of a light beige table and copy space on the left.
+- `cafe-window.jpg` was requested with a green mug in window light and copy space on the left.
 
-Keşfet → Kataloğa katkıda bulun üzerinden yüklenir. Her görsel normal katalog kabulü, analiz ve indeksleme hattından geçer.
+Upload the images through the catalog contribution screen. Each image follows the normal admission, analysis, and indexing flow.
